@@ -1,0 +1,20 @@
+name: publish
+on:
+  push:
+    branches: [main]
+    paths: [Dockerfile, .github/workflows/publish.yml]
+  schedule: [{cron: '23 5 * * 1'}]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/${{ github.repository }}:latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: echo "${{ github.token }}" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - run: docker build --pull -t "$IMAGE" .
+      - run: docker push "$IMAGE"
