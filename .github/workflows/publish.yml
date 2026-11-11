@@ -3,18 +3,38 @@ on:
   push:
     branches: [main]
     paths: [Dockerfile, .github/workflows/publish.yml]
+  pull_request:
+    paths: [Dockerfile, .github/workflows/publish.yml]
   schedule: [{cron: '23 5 * * 1'}]
   workflow_dispatch:
 permissions:
   contents: read
   packages: write
+# One run per ref: PR checks never queue behind (or cancel) a publish on main.
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
-      IMAGE: ghcr.io/${{ github.repository }}:latest
+      IMAGE: ghcr.io/${{ github.repository }}
     steps:
       - uses: actions/checkout@v7
-      - run: echo "${{ github.token }}" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-      - run: docker build --pull -t "$IMAGE" .
-      - run: docker push "$IMAGE"
+      # Only main logs in and publishes; PRs and manual runs on other branches build and test only.
+      - if: github.ref == 'refs/heads/main'
+        run: echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+        env:
+          TOKEN: ${{ github.token }}
+      # Date tag, not SHA: the weekly run reuses the same commit and would overwrite a SHA tag.
+      - run: docker build --pull -t "$IMAGE:latest" -t "$IMAGE:$(date -u +%Y%m%d)" .
+      # A bad base or apt change must fail here, before it replaces :latest.
+      - run: docker run --rm "$IMAGE:latest" sh -c 'gh --version && java -version && rsync --version && tea --version && keytool -list -cacerts -storepass changeit >/dev/null'
+      - if: github.ref == 'refs/heads/main'
+        run: docker push --all-tags "$IMAGE"
+      # Keep the newest 10 versions (dated tags pile up one per build).
+      - if: github.ref == 'refs/heads/main'
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: container
+          min-versions-to-keep: 10
