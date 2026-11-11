@@ -3,12 +3,15 @@ on:
   push:
     branches: [main]
     paths: [Dockerfile, .github/workflows/publish.yml]
+  pull_request:
+    paths: [Dockerfile, .github/workflows/publish.yml]
   schedule: [{cron: '23 5 * * 1'}]
   workflow_dispatch:
 permissions:
   contents: read
   packages: write
-concurrency: publish
+# One run per ref: PR checks never queue behind (or cancel) a publish on main.
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -17,16 +20,20 @@ jobs:
       IMAGE: ghcr.io/${{ github.repository }}
     steps:
       - uses: actions/checkout@v7
-      - run: echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      # Pull requests only build and test; they never log in or publish.
+      - if: github.event_name != 'pull_request'
+        run: echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
         env:
           TOKEN: ${{ github.token }}
       # Date tag, not SHA: the weekly run reuses the same commit and would overwrite a SHA tag.
       - run: docker build --pull -t "$IMAGE:latest" -t "$IMAGE:$(date -u +%Y%m%d)" .
       # A bad base or apt change must fail here, before it replaces :latest.
       - run: docker run --rm "$IMAGE:latest" sh -c 'gh --version && java -version && rsync --version && tea --version && keytool -list -cacerts -storepass changeit >/dev/null'
-      - run: docker push --all-tags "$IMAGE"
+      - if: github.event_name != 'pull_request'
+        run: docker push --all-tags "$IMAGE"
       # Keep the newest 10 versions (dated tags pile up one per build).
-      - uses: actions/delete-package-versions@v5
+      - if: github.event_name != 'pull_request'
+        uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ github.event.repository.name }}
           package-type: container
