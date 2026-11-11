@@ -2,7 +2,7 @@
 
 A small [nektos/act](https://github.com/nektos/act) runner image: [`catthehacker/ubuntu:act-latest`](https://github.com/catthehacker/docker_images) plus the tools the real GitHub runner has and that image lacks (today: `gh`, `default-jdk-headless`, `rsync`). Add more installs to the `Dockerfile` as needed.
 
-Rebuilt and pushed to `ghcr.io/snooptheone/act-ubuntu-custom:latest` on every change to the `Dockerfile` and once a week, so it follows its base image. Each build is also tagged with its commit SHA, so you can pin an older one. The image is smoke-tested before it is pushed.
+Rebuilt and pushed to `ghcr.io/snooptheone/act-ubuntu-custom:latest` on every change to the `Dockerfile` and once a week, so it follows its base image. Each build is also tagged with its build date (`YYYYMMDD`), so you can pin an older one. A second build on the same day overwrites that day's tag. The image is smoke-tested before it is pushed.
 
 ## Use
 

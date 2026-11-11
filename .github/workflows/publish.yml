@@ -15,11 +15,13 @@ jobs:
     timeout-minutes: 20
     env:
       IMAGE: ghcr.io/${{ github.repository }}
-      TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v7
       - run: echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-      - run: docker build --pull -t "$IMAGE:latest" -t "$IMAGE:$GITHUB_SHA" .
+        env:
+          TOKEN: ${{ github.token }}
+      # Date tag, not SHA: the weekly run reuses the same commit and would overwrite a SHA tag.
+      - run: docker build --pull -t "$IMAGE:latest" -t "$IMAGE:$(date -u +%Y%m%d)" .
       # A bad base or apt change must fail here, before it replaces :latest.
-      - run: docker run --rm "$IMAGE:latest" sh -c 'gh --version && java -version && rsync --version'
+      - run: docker run --rm "$IMAGE:latest" sh -c 'gh --version && java -version && rsync --version && keytool -list -cacerts -storepass changeit >/dev/null'
       - run: docker push --all-tags "$IMAGE"
