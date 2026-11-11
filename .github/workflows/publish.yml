@@ -23,7 +23,7 @@ jobs:
       # Date tag, not SHA: the weekly run reuses the same commit and would overwrite a SHA tag.
       - run: docker build --pull -t "$IMAGE:latest" -t "$IMAGE:$(date -u +%Y%m%d)" .
       # A bad base or apt change must fail here, before it replaces :latest.
-      - run: docker run --rm "$IMAGE:latest" sh -c 'gh --version && java -version && rsync --version && keytool -list -cacerts -storepass changeit >/dev/null'
+      - run: docker run --rm "$IMAGE:latest" sh -c 'gh --version && java -version && rsync --version && tea --version && keytool -list -cacerts -storepass changeit >/dev/null'
       - run: docker push --all-tags "$IMAGE"
       # Keep the newest 10 versions (dated tags pile up one per build).
       - uses: actions/delete-package-versions@v5
