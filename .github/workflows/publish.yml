@@ -25,3 +25,9 @@ jobs:
       # A bad base or apt change must fail here, before it replaces :latest.
       - run: docker run --rm "$IMAGE:latest" sh -c 'gh --version && java -version && rsync --version && keytool -list -cacerts -storepass changeit >/dev/null'
       - run: docker push --all-tags "$IMAGE"
+      # Keep the newest 10 versions (dated tags pile up one per build).
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: container
+          min-versions-to-keep: 10
