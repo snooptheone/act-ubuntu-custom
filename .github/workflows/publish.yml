@@ -20,8 +20,8 @@ jobs:
       IMAGE: ghcr.io/${{ github.repository }}
     steps:
       - uses: actions/checkout@v7
-      # Pull requests only build and test; they never log in or publish.
-      - if: github.event_name != 'pull_request'
+      # Only main logs in and publishes; PRs and manual runs on other branches build and test only.
+      - if: github.ref == 'refs/heads/main'
         run: echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
         env:
           TOKEN: ${{ github.token }}
@@ -29,10 +29,10 @@ jobs:
       - run: docker build --pull -t "$IMAGE:latest" -t "$IMAGE:$(date -u +%Y%m%d)" .
       # A bad base or apt change must fail here, before it replaces :latest.
       - run: docker run --rm "$IMAGE:latest" sh -c 'gh --version && java -version && rsync --version && tea --version && keytool -list -cacerts -storepass changeit >/dev/null'
-      - if: github.event_name != 'pull_request'
+      - if: github.ref == 'refs/heads/main'
         run: docker push --all-tags "$IMAGE"
       # Keep the newest 10 versions (dated tags pile up one per build).
-      - if: github.event_name != 'pull_request'
+      - if: github.ref == 'refs/heads/main'
         uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ github.event.repository.name }}
